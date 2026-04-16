@@ -1,7 +1,7 @@
 -- ============================================================================
 -- ETF AI Hands-on: Setup Script
 -- ============================================================================
--- 対象: Global X Japan ポートフォリオマネージャー向けハンズオン
+-- 対象: ポートフォリオマネージャー向けハンズオン
 -- 概要: ETFポートフォリオ分析AIアシスタントの構築に必要なオブジェクトを作成します
 --
 -- 作成されるオブジェクト:
@@ -10,6 +10,8 @@
 --   Warehouses: DEMO_WH, COMPUTE_WH
 --   Tables    : DIM_ETF, DIM_PORTFOLIO, FACT_HOLDINGS, FACT_PERFORMANCE,
 --               MARKET_NEWS, ETF_DESCRIPTIONS
+--   Integration: git_api_integration (GitHub)
+--   Git Repo  : ETF_AI_HANDSON_DB.AI.ETF_AI_HANDSON_REPO
 -- ============================================================================
 
 USE ROLE ACCOUNTADMIN;
@@ -21,7 +23,7 @@ ALTER SESSION SET query_tag = 'etf_ai_handson_setup';
 -- ============================================================================
 
 CREATE DATABASE IF NOT EXISTS ETF_AI_HANDSON_DB
-    COMMENT = 'Global X ETF AI Hands-on - ポートフォリオマネージャー向けデモ';
+    COMMENT = 'ETF AI Hands-on - ポートフォリオマネージャー向けデモ';
 
 CREATE SCHEMA IF NOT EXISTS ETF_AI_HANDSON_DB.DEMO_SCHEMA
     COMMENT = 'デモ用データスキーマ（テーブル・ビュー）';
@@ -400,12 +402,33 @@ CREATE STAGE IF NOT EXISTS ETF_AI_HANDSON_DB.AI.ETF_DOCS_STAGE
     COMMENT = 'ETFファンド書類格納ステージ';
 
 -- ============================================================================
+-- Section 12: Git リポジトリ統合
+-- ============================================================================
+
+USE ROLE ACCOUNTADMIN;
+
+CREATE OR REPLACE API INTEGRATION git_api_integration
+    API_PROVIDER = git_https_api
+    API_ALLOWED_PREFIXES = ('https://github.com/kmotokubota/')
+    ENABLED = TRUE
+    COMMENT = 'GitHub パブリックリポジトリ用 API Integration';
+
+CREATE OR REPLACE GIT REPOSITORY ETF_AI_HANDSON_DB.AI.ETF_AI_HANDSON_REPO
+    API_INTEGRATION = git_api_integration
+    ORIGIN = 'https://github.com/kmotokubota/etf-ai-handson'
+    COMMENT = 'ETF AI ハンズオン教材リポジトリ';
+
+ALTER GIT REPOSITORY ETF_AI_HANDSON_DB.AI.ETF_AI_HANDSON_REPO FETCH;
+
+-- ============================================================================
 -- Cortex Search・Semantic View 作成権限の付与
 -- ============================================================================
 
 GRANT CREATE CORTEX SEARCH SERVICE ON SCHEMA ETF_AI_HANDSON_DB.AI TO ROLE SYSADMIN;
 GRANT CREATE SEMANTIC VIEW ON SCHEMA ETF_AI_HANDSON_DB.AI TO ROLE SYSADMIN;
 GRANT CREATE AGENT ON SCHEMA ETF_AI_HANDSON_DB.AI TO ROLE SYSADMIN;
+GRANT CREATE GIT REPOSITORY ON SCHEMA ETF_AI_HANDSON_DB.AI TO ROLE SYSADMIN;
+GRANT USAGE ON INTEGRATION git_api_integration TO ROLE SYSADMIN;
 
 -- ============================================================================
 -- 確認クエリ
