@@ -12,6 +12,7 @@
 --               MARKET_NEWS, ETF_DESCRIPTIONS
 --   Integration: git_api_integration (GitHub)
 --   Git Repo  : ETF_AI_HANDSON_DB.AI.ETF_AI_HANDSON_REPO
+--   Stages    : PROSPECTUS_STAGE (目論見書PDF), DOCUMENTS_STAGE (月次レポートPNG)
 -- ============================================================================
 
 USE ROLE ACCOUNTADMIN;
@@ -394,15 +395,7 @@ INSERT INTO ETF_DESCRIPTIONS VALUES
  'ファクトシート', '2026-03-31');
 
 -- ============================================================================
--- Section 11: Cortex Search 用ステージ作成
--- ============================================================================
-
-CREATE STAGE IF NOT EXISTS ETF_AI_HANDSON_DB.AI.ETF_DOCS_STAGE
-    ENCRYPTION = (TYPE = 'SNOWFLAKE_SSE')
-    COMMENT = 'ETFファンド書類格納ステージ';
-
--- ============================================================================
--- Section 12: Git リポジトリ統合
+-- Section 11: Git リポジトリ統合
 -- ============================================================================
 
 USE ROLE ACCOUNTADMIN;
@@ -420,15 +413,64 @@ CREATE OR REPLACE GIT REPOSITORY ETF_AI_HANDSON_DB.AI.ETF_AI_HANDSON_REPO
 
 ALTER GIT REPOSITORY ETF_AI_HANDSON_DB.AI.ETF_AI_HANDSON_REPO FETCH;
 
+USE ROLE SYSADMIN;
+USE DATABASE ETF_AI_HANDSON_DB;
+USE SCHEMA AI;
+
+-- ============================================================================
+-- Section 12: 目論見書ステージ（Cortex Search 用）
+-- ============================================================================
+
+CREATE OR REPLACE STAGE ETF_AI_HANDSON_DB.AI.PROSPECTUS_STAGE
+    ENCRYPTION = (TYPE = 'SNOWFLAKE_SSE')
+    DIRECTORY = (ENABLE = TRUE)
+    COMMENT = '目論見書 PDF を格納するステージ（Cortex Search のソース）';
+
+-- Git リポジトリから目論見書 PDF をステージにコピー
+COPY FILES
+    INTO @ETF_AI_HANDSON_DB.AI.PROSPECTUS_STAGE/
+    FROM @ETF_AI_HANDSON_DB.AI.ETF_AI_HANDSON_REPO/branches/main/docs/prospectus/
+    PATTERN = '.*\.pdf';
+
+ALTER STAGE ETF_AI_HANDSON_DB.AI.PROSPECTUS_STAGE REFRESH;
+
+LIST @ETF_AI_HANDSON_DB.AI.PROSPECTUS_STAGE;
+
+SELECT '【Section 12】目論見書ステージへのコピーが完了しました' AS STATUS;
+
+-- ============================================================================
+-- Section 13: 月次レポートステージ（AI_EXTRACT 用）
+-- ============================================================================
+
+CREATE OR REPLACE STAGE ETF_AI_HANDSON_DB.AI.DOCUMENTS_STAGE
+    ENCRYPTION = (TYPE = 'SNOWFLAKE_SSE')
+    DIRECTORY = (ENABLE = TRUE)
+    COMMENT = '月次レポート PNG を格納するステージ（AI_EXTRACT 入力用）';
+
+-- Git リポジトリから月次レポート PNG をステージにコピー
+COPY FILES
+    INTO @ETF_AI_HANDSON_DB.AI.DOCUMENTS_STAGE/
+    FROM @ETF_AI_HANDSON_DB.AI.ETF_AI_HANDSON_REPO/branches/main/docs/
+    PATTERN = '.*\.png';
+
+ALTER STAGE ETF_AI_HANDSON_DB.AI.DOCUMENTS_STAGE REFRESH;
+
+LIST @ETF_AI_HANDSON_DB.AI.DOCUMENTS_STAGE;
+
+SELECT '【Section 13】月次レポートステージへのコピーが完了しました' AS STATUS;
+
 -- ============================================================================
 -- Cortex Search・Semantic View 作成権限の付与
 -- ============================================================================
 
+USE ROLE ACCOUNTADMIN;
 GRANT CREATE CORTEX SEARCH SERVICE ON SCHEMA ETF_AI_HANDSON_DB.AI TO ROLE SYSADMIN;
 GRANT CREATE SEMANTIC VIEW ON SCHEMA ETF_AI_HANDSON_DB.AI TO ROLE SYSADMIN;
 GRANT CREATE AGENT ON SCHEMA ETF_AI_HANDSON_DB.AI TO ROLE SYSADMIN;
 GRANT CREATE GIT REPOSITORY ON SCHEMA ETF_AI_HANDSON_DB.AI TO ROLE SYSADMIN;
 GRANT USAGE ON INTEGRATION git_api_integration TO ROLE SYSADMIN;
+GRANT READ ON STAGE ETF_AI_HANDSON_DB.AI.PROSPECTUS_STAGE TO ROLE SYSADMIN;
+GRANT READ ON STAGE ETF_AI_HANDSON_DB.AI.DOCUMENTS_STAGE TO ROLE SYSADMIN;
 
 -- ============================================================================
 -- 確認クエリ
