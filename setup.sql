@@ -398,7 +398,7 @@ INSERT INTO ETF_DESCRIPTIONS VALUES
 -- Section 11: 拡充データ（ポートフォリオ追加・パフォーマンス拡張・リバランス履歴）
 -- ============================================================================
 
-USE ROLE SYSADMIN;
+USE ROLE ACCOUNTADMIN;
 USE DATABASE ETF_AI_HANDSON_DB;
 USE SCHEMA DEMO_SCHEMA;
 USE WAREHOUSE DEMO_WH;
