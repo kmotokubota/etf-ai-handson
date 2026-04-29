@@ -741,13 +741,13 @@ ORDER BY 1;
 
 CREATE OR REPLACE API INTEGRATION git_api_integration
     API_PROVIDER = git_https_api
-    API_ALLOWED_PREFIXES = ('https://github.com/kmotokubota/')
+    API_ALLOWED_PREFIXES = ('https://github.com/sfc-gh-kmotokubota/')
     ENABLED = TRUE
     COMMENT = 'GitHub パブリックリポジトリ用 API Integration';
 
 CREATE OR REPLACE GIT REPOSITORY ETF_AI_HANDSON_DB.AI.ETF_AI_HANDSON_REPO
     API_INTEGRATION = git_api_integration
-    ORIGIN = 'https://github.com/kmotokubota/etf-ai-handson'
+    ORIGIN = 'https://github.com/sfc-gh-kmotokubota/etf-ai-handson'
     COMMENT = 'ETF AI ハンズオン教材リポジトリ';
 
 ALTER GIT REPOSITORY ETF_AI_HANDSON_DB.AI.ETF_AI_HANDSON_REPO FETCH;
